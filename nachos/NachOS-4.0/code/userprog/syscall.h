@@ -39,6 +39,12 @@
 #define SC_ReadString	18
 #define SC_PrintString	19
 
+#define	SC_TCPSocket	21
+#define	SC_TCPConnect	22
+#define	SC_TCPSend	23
+#define	SC_TCPReceive	24
+#define	SC_TCPClose	25
+
 #define SC_Add		42
 
 #ifndef IN_ASM
@@ -157,6 +163,12 @@ void PrintChar(char character);
 void ReadString(char buffer[], int length);
 
 void PrintString(char buffer[]);
+int sockets[20];
+int TCPSocket();
+int Connect(int socketid, char *ip, int port);
+int Send(int socketid, char *buffer, int len);
+int Receive(int socketid, char *buffer, int len);
+int Close(int socketid);
 /* User-level thread operations: Fork and Yield.  To allow multiple
  * threads to run within a user program. 
  *

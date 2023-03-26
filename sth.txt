@@ -1,0 +1,94 @@
+#ifndef _SYS_SOCKET_H
+#define _SYS_SOCKET_H
+
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/time.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
+/* Socket types */
+#define SOCK_STREAM 1
+#define SOCK_DGRAM 2
+#define SOCK_RAW 3
+#define SOCK_RDM 4
+#define SOCK_SEQPACKET 5
+
+/* Address families */
+#define AF_UNSPEC 0
+#define AF_UNIX 1
+#define AF_INET 2
+#define AF_INET6 10
+
+/* Socket options */
+#define SO_REUSEADDR 2
+#define SO_KEEPALIVE 9
+#define SO_ERROR 4
+#define SO_TYPE 3
+#define SO_RCVBUF 8
+#define SO_SNDBUF 7
+#define SO_BROADCAST 6
+#define SO_LINGER 13
+
+/* Protocol families */
+#define PF_UNSPEC 0
+#define PF_UNIX 1
+#define PF_INET 2
+#define PF_INET6 10
+
+/* Protocol numbers */
+#define IPPROTO_TCP 6
+#define IPPROTO_UDP 17
+
+/* Socket address structure */
+struct sockaddr {
+    unsigned short sa_family; /* address family, AF_xxx */
+    char sa_data[14]; /* 14 bytes of protocol-specific address */
+};
+
+/* Internet address structure */
+struct in_addr {
+    unsigned long s_addr; /* 32-bit IPv4 address */
+};
+
+/* Socket address structure for IPv4 */
+struct sockaddr_in {
+    short sin_family; /* address family, AF_INET */
+    unsigned short sin_port; /* 16-bit TCP or UDP port number */
+    struct in_addr sin_addr; /* 32-bit IPv4 address */
+    char sin_zero[8]; /* unused */
+};
+
+/* Socket address structure for Unix */
+struct sockaddr_un {
+    short sun_family; /* address family, AF_UNIX */
+    char sun_path[108]; /* path name (gag) */
+};
+
+/* Socket creation */
+int socket(int domain, int type, int protocol);
+
+/* Binding a socket to an address */
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+
+/* Establishing a connection on a socket */
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+
+/* Listening for connections on a socket */
+int listen(int sockfd, int backlog);
+
+/* Accepting a connection on a socket */
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+/* Sending data on a socket */
+ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+
+/* Receiving data from a socket */
+ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+
+/* Closing a socket */
+int close(int sockfd);
+
+#endif /* _SYS_SOCKET_H */

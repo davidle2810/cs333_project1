@@ -26,6 +26,8 @@
 #include "syscall.h"
 #include "ksyscall.h"
 #include "synchconsole.h"
+#include "sys/socket.h"
+
 //----------------------------------------------------------------------
 // ExceptionHandler
 // 	Entry point into the Nachos kernel.  Called when a user program
@@ -245,7 +247,8 @@ ExceptionHandler(ExceptionType which)
 				printf("\n Create file '%s' success", filename);
 				kernel->machine->WriteRegister(2, 0);
 				delete[] filename;
-				break;
+				//break;
+				PCIncrement(); return;
 			}
 			case SC_Open:
 			{
@@ -455,18 +458,9 @@ ExceptionHandler(ExceptionType which)
 				filename=User2System(virtAddr, 32);
 				if (strlen(filename) == 0)
 				{
-					printf("\n File name is not valid");
 					kernel->machine->WriteRegister(2, -1); 
 					delete[] filename;
 					break;
-				}
-			
-				if (filename == NULL)  
-				{
-					printf("\n Not enough memory in system");
-					kernel->machine->WriteRegister(2, -1);
-					delete[] filename;
-					break; 
 				}
 
 				if(!kernel->fileSystem->Remove(filename))
@@ -476,6 +470,110 @@ ExceptionHandler(ExceptionType which)
 				delete filename;
 				break;
 				
+			}
+
+			case SC_TCPSocket:
+			{
+				int i, sockfd;
+  				// Find an available socket file descriptor
+  				for (i = 0; i < 20; i++) 
+				{
+   					if (sockets[i] == 0) 
+					{
+      					// Create a new TCP socket
+      					sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+      					if (sockfd == -1) 
+        					kernel->machine->WriteRegister(2,-1); // Error creating socket
+      					sockets[i] = sockfd;
+      					kernel->machine->WriteRegister(2,sockfd);
+						PCIncrement();
+						return; // Return file descriptor ID
+    				}
+
+				}
+				kernel->machine->WriteRegister(2,-1);
+				PCIncrement();
+				return;
+			}
+
+			case SC_TCPConnect:
+			{
+				int socketid = kernel->machine->ReadRegister(4);
+				int virtAddr = kernel->machine->ReadRegister(5); 
+				char* ip = User2System(virtAddr, 32); 
+				int port = kernel->machine->ReadRegister(6); 
+				
+				int sockfd = sockets[socketid];
+  				struct sockaddr_in serv_addr;
+  				memset(&serv_addr, 0, sizeof(serv_addr));
+
+  				// Configure server address
+  				serv_addr.sin_family = AF_INET;
+  				serv_addr.sin_port = htons(port);
+  				if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) 
+    				kernel->machine->WriteRegister(2,-1); // Error converting IP address
+ 
+
+  				// Connect to server
+  				if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    				kernel->machine->WriteRegister(2,-1); // Error connecting to server
+  
+
+  				kernel->machine->WriteRegister(2,0); // Connection successful
+				PCIncrement();
+				return;
+			}
+
+			case SC_TCPSend:
+			{
+				int socketid = kernel->machine->ReadRegister(4);
+				int virtAddr = kernel->machine->ReadRegister(5); 
+				char* buffer = User2System(virtAddr, 32); 
+				int len = kernel->machine->ReadRegister(6); 
+				int sockfd = sockets[socketid];
+  				int bytes_sent = send(sockfd, buffer, len, 0);
+
+  				if (bytes_sent == -1) 
+    				kernel->machine->WriteRegister(2,-1); // Error sending data
+
+
+  				kernel->machine->WriteRegister(2,byte_sent); // Return number of bytes sent
+				PCIncrement();
+				return;
+			}
+
+			case SC_TCPReceive:
+			{
+				int socketid = kernel->machine->ReadRegister(4);
+				int virtAddr = kernel->machine->ReadRegister(5); 
+				char* buffer = User2System(virtAddr, 32); 
+				int len = kernel->machine->ReadRegister(6); 
+				int sockfd = sockets[socketid];
+  				int bytes_received = recv(sockfd, buffer, len, 0);
+
+  				if (bytes_received == 0) 
+    				kernel->machine->WriteRegister(2,0); // Connection closed
+ 
+
+  				if (bytes_received == -1) 
+    				kernel->machine->WriteRegister(2,-1); // Error receiving data
+
+  				kernel->machine->WriteRegister(2,bytes_received); // Return number of bytes received
+				PCIncrement();
+				return;
+			}
+
+			case SC_TCPClose:
+			{
+				int socketid = kernel->machine->ReadRegister(4);
+				int sockfd = sockets[socketid];
+  				if (close(sockfd) == -1) 
+    				kernel->machine->WriteRegister(2,-1); // Error closing socke
+  				sockets[socketid] = 0; // Free socket file descriptor
+  				kernel->machine->WriteRegister(2,0); // Socket closed successfully
+				PCIncrement();
+				return;
 			}
 	
 			case SC_Add:
@@ -512,8 +610,7 @@ ExceptionHandler(ExceptionType which)
 				break;
       	}
 		PCIncrement();
-      	break;
-    default:
+    	default:
 		cerr << "Unexpected user mode exception" << (int)which << "\n";
 		break;
     }

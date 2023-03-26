@@ -179,6 +179,46 @@ PrintString:
 	j	$31
 	.end PrintString
 
+	.globl TCPSocket
+	.ent TCPSocket
+TCPSocket:
+	addiu $2, $0, SC_TCPSocket
+	syscall
+	j	$31
+	.end TCPSocket
+
+	.globl TCPConnect
+	.ent TCPConnect
+TCPConnect:
+	addiu $2, $0, SC_TCPConnect
+	syscall
+	j	$31
+	.end TCPConnect
+
+	.globl TCPSend
+	.ent TCPSend
+TCPSend:
+	addiu $2, $0, SC_TCPSend
+	syscall
+	j	$31
+	.end TCPSend
+
+	.globl TCPReceive
+	.ent TCPReceive
+TCPReceive:
+	addiu $2, $0, SC_TCPReceive
+	syscall
+	j	$31
+	.end TCPReceive
+
+	.globl TCPClose
+	.ent TCPClose
+TCPClose:
+	addiu $2, $0, SC_TCPClose
+	syscall
+	j	$31
+	.end TCPClose
+
         .globl ThreadFork
         .ent    ThreadFork
 ThreadFork:
