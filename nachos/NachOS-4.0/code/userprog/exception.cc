@@ -26,8 +26,8 @@
 #include "syscall.h"
 #include "ksyscall.h"
 #include "synchconsole.h"
-#include "sys/socket.h"
 
+#define MaxFileLength 32
 //----------------------------------------------------------------------
 // ExceptionHandler
 // 	Entry point into the Nachos kernel.  Called when a user program
@@ -139,15 +139,15 @@ ExceptionHandler(ExceptionType which)
     case SyscallException:
 		switch(type) 
 		{
-      		case SC_Halt:
+    case SC_Halt:
 				DEBUG(dbgSys, "Shutdown, initiated by user program.\n");
 				printf("\nShutdown, initiated by user program. ");
 				SysHalt();
 
 				ASSERTNOTREACHED();
 				break;
-			case SC_ReadChar:
-			{
+		case SC_ReadChar:
+		{
 			char chr;
 			chr = kernel->synchConsoleIn->GetChar();
 			if (chr == NULL) 
@@ -472,109 +472,156 @@ ExceptionHandler(ExceptionType which)
 				
 			}
 
-			case SC_TCPSocket:
+			case SC_Exec:
 			{
-				int i, sockfd;
-  				// Find an available socket file descriptor
-  				for (i = 0; i < 20; i++) 
+				int virtAddr;
+				virtAddr = kernel->machine->ReadRegister(4);	
+				char* name;
+				name = User2System(virtAddr, MaxFileLength + 1); 	
+				if(name == NULL)
 				{
-   					if (sockets[i] == 0) 
-					{
-      					// Create a new TCP socket
-      					sockfd = socket(AF_INET, SOCK_STREAM, 0);
-
-      					if (sockfd == -1) 
-        					kernel->machine->WriteRegister(2,-1); // Error creating socket
-      					sockets[i] = sockfd;
-      					kernel->machine->WriteRegister(2,sockfd);
-						PCIncrement();
-						return; // Return file descriptor ID
-    				}
-
+					DEBUG('a', "\n Not enough memory in System");
+					printf("\n Not enough memory in System");
+					kernel->machine->WriteRegister(2, -1);
+					return;
 				}
-				kernel->machine->WriteRegister(2,-1);
+				OpenFile *openFile = kernel->fileSystem->Open(name);
+				if (openFile == NULL)
+				{
+					printf("\nExec:: Can't open this file.");
+					kernel->machine->WriteRegister(2,-1);
+					PCIncrement();
+					return;
+				}
+
+				delete openFile;
+
+				// Return child process id
+				int id = pTab->ExecUpdate(name); 
+				kernel->machine->WriteRegister(2,id);
+
+				delete[] name;	
 				PCIncrement();
 				return;
-			}
+		}
 
-			case SC_TCPConnect:
+		case SC_Join:
+		{ 
+			int id = machine->ReadRegister(4);
+			int result = pTab->JoinUpdate(id);			
+			kernel->machine->WriteRegister(2, result);
+			PCIncrement();
+			return;
+		}
+		case SC_Exit:
+		{
+			int exitStatus = kernel->machine->ReadRegister(4);
+			if(exitStatus != 0)
 			{
-				int socketid = kernel->machine->ReadRegister(4);
-				int virtAddr = kernel->machine->ReadRegister(5); 
-				char* ip = User2System(virtAddr, 32); 
-				int port = kernel->machine->ReadRegister(6); 
+				PCIncrement();
+				return;
+			}			
+			
+			int result = pTab->ExitUpdate(exitStatus);
+			currentThread->FreeSpace();
+			currentThread->Finish();
+			PCIncrement();
+			return; 
 				
-				int sockfd = sockets[socketid];
-  				struct sockaddr_in serv_addr;
-  				memset(&serv_addr, 0, sizeof(serv_addr));
-
-  				// Configure server address
-  				serv_addr.sin_family = AF_INET;
-  				serv_addr.sin_port = htons(port);
-  				if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) 
-    				kernel->machine->WriteRegister(2,-1); // Error converting IP address
- 
-
-  				// Connect to server
-  				if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
-    				kernel->machine->WriteRegister(2,-1); // Error connecting to server
-  
-
-  				kernel->machine->WriteRegister(2,0); // Connection successful
-				PCIncrement();
-				return;
-			}
-
-			case SC_TCPSend:
+		}
+		case SC_CreateSemaphore:
+		{
+			int virtAddr = kernel->machine->ReadRegister(4);
+			int semval = kernel->machine->ReadRegister(5);
+			char *name = User2System(virtAddr, MaxFileLength + 1);
+			if(name == NULL)
 			{
-				int socketid = kernel->machine->ReadRegister(4);
-				int virtAddr = kernel->machine->ReadRegister(5); 
-				char* buffer = User2System(virtAddr, 32); 
-				int len = kernel->machine->ReadRegister(6); 
-				int sockfd = sockets[socketid];
-  				int bytes_sent = send(sockfd, buffer, len, 0);
-
-  				if (bytes_sent == -1) 
-    				kernel->machine->WriteRegister(2,-1); // Error sending data
-
-
-  				kernel->machine->WriteRegister(2,byte_sent); // Return number of bytes sent
+				printf("\n Not enough memory in System");
+				kernel->machine->WriteRegister(2, -1);
+				delete[] name;
 				PCIncrement();
 				return;
 			}
+			
+			int result = semTab->Create(name, semval);
 
-			case SC_TCPReceive:
+			if (result == -1)
 			{
-				int socketid = kernel->machine->ReadRegister(4);
-				int virtAddr = kernel->machine->ReadRegister(5); 
-				char* buffer = User2System(virtAddr, 32); 
-				int len = kernel->machine->ReadRegister(6); 
-				int sockfd = sockets[socketid];
-  				int bytes_received = recv(sockfd, buffer, len, 0);
-
-  				if (bytes_received == 0) 
-    				kernel->machine->WriteRegister(2,0); // Connection closed
- 
-
-  				if (bytes_received == -1) 
-    				kernel->machine->WriteRegister(2,-1); // Error receiving data
-
-  				kernel->machine->WriteRegister(2,bytes_received); // Return number of bytes received
+				printf("\n Can not create semaphore");
+				kernel->machine->WriteRegister(2, -1);
+				delete[] name;
 				PCIncrement();
-				return;
+				return;				
 			}
+			
+			delete[] name;
+			kernel->machine->WriteRegister(2, result);
+			PCIncrement();
+			return;
+		}
 
-			case SC_TCPClose:
+		case SC_Wait:			
+		{
+			int virtAddr = kernel->machine->ReadRegister(4);
+
+			char *name = User2System(virtAddr, MaxFileLength + 1);
+			if(name == NULL)
 			{
-				int socketid = kernel->machine->ReadRegister(4);
-				int sockfd = sockets[socketid];
-  				if (close(sockfd) == -1) 
-    				kernel->machine->WriteRegister(2,-1); // Error closing socke
-  				sockets[socketid] = 0; // Free socket file descriptor
-  				kernel->machine->WriteRegister(2,0); // Socket closed successfully
+				DEBUG('a', "\n Not enough memory in System");
+				printf("\n Not enough memory in System");
+				kernel->machine->WriteRegister(2, -1);
+				delete[] name;
 				PCIncrement();
 				return;
 			}
+			
+			int result = semTab->Wait(name);
+
+			if(result == -1)
+			{
+				printf("\n Semaphore does not exist");
+				kernel->machine->WriteRegister(2, -1);
+				delete[] name;
+				PCIncrement();
+				return;				
+			}
+			
+			delete[] name;
+			kernel->machine->WriteRegister(2, result);
+			PCIncrement();
+			return;
+		}
+		
+		case SC_Signal:		
+		{
+			int virtAddr = kernel->machine->ReadRegister(4);
+
+			char *name = User2System(virtAddr, MaxFileLength + 1);
+			if(name == NULL)
+			{
+				printf("\n Not enough memory in System");
+				kernel->machine->WriteRegister(2, -1);
+				delete[] name;
+				PCIncrement();
+				return;
+			}
+			
+			int result = semTab->Signal(name);
+
+			if (result == -1)
+			{
+				printf("\n Semaphore does not exist");
+				kernel->machine->WriteRegister(2, -1);
+				delete[] name;
+				PCIncrement();
+				return;				
+			}
+			
+			delete[] name;
+			kernel->machine->WriteRegister(2, result);
+			PCIncrement();
+			return;
+		}
 	
 			case SC_Add:
 			{

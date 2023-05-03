@@ -18,12 +18,21 @@
 #include "alarm.h"
 #include "filesys.h"
 #include "machine.h"
+#include "bitmap.h"
+#include "stable.h"
+#include "ptable.h"
+
+Semaphore *addrLock;
+Bitmap *gPhyPageBitMap;
+STable *semTab;
+PTable *pTab;
 
 class PostOfficeInput;
 class PostOfficeOutput;
 class SynchConsoleInput;
 class SynchConsoleOutput;
 class SynchDisk;
+class Semaphore;
 
 class Kernel {
   public:

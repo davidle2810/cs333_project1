@@ -30,10 +30,14 @@ class AddrSpace {
     void Execute();             	// Run a program
 					// assumes the program has already
                                         // been loaded
+	AddrSpace(char* filename);
+
+	void InitRegisters();
 
     void SaveState();			// Save/restore address space-specific
     void RestoreState();		// info on a context switch 
 
+	bool usedPhyPage[NumPhysPages];
     // Translate virtual address _vaddr_
     // to physical address _paddr_. _mode_
     // is 0 for Read, 1 for Write.
