@@ -299,26 +299,25 @@ AddrSpace::Execute()
 void
 AddrSpace::InitRegisters()
 {
-    Machine *machine = kernel->machine;
     int i;
 
     for (i = 0; i < NumTotalRegs; i++)
-	machine->WriteRegister(i, 0);
+	kernel->machine->WriteRegister(i, 0);
 
     // Initial program counter -- must be location of "Start", which
     //  is assumed to be virtual address zero
-    machine->WriteRegister(PCReg, 0);	
+    kernel->machine->WriteRegister(PCReg, 0);	
 
     // Need to also tell MIPS where next instruction is, because
     // of branch delay possibility
     // Since instructions occupy four bytes each, the next instruction
     // after start will be at virtual address four.
-    machine->WriteRegister(NextPCReg, 4);
+    kernel->machine->WriteRegister(NextPCReg, 4);
 
    // Set the stack register to the end of the address space, where we
    // allocated the stack; but subtract off a bit, to make sure we don't
    // accidentally reference off the end!
-    machine->WriteRegister(StackReg, numPages * PageSize - 16);
+    kernel->machine->WriteRegister(StackReg, numPages * PageSize - 16);
     DEBUG(dbgAddr, "Initializing stack pointer: " << numPages * PageSize - 16);
 }
 

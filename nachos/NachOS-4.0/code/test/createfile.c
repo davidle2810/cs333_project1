@@ -2,7 +2,7 @@
 
 int main()
 {
-	Create("filetodelete.txt");
+	Create("newfile.txt");
 	return 0;
 }
 

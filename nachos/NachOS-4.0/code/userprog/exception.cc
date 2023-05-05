@@ -139,79 +139,13 @@ ExceptionHandler(ExceptionType which)
     case SyscallException:
 		switch(type) 
 		{
-    case SC_Halt:
+    	case SC_Halt:
 				DEBUG(dbgSys, "Shutdown, initiated by user program.\n");
 				printf("\nShutdown, initiated by user program. ");
 				SysHalt();
 
 				ASSERTNOTREACHED();
 				break;
-		case SC_ReadChar:
-		{
-			char chr;
-			chr = kernel->synchConsoleIn->GetChar();
-			if (chr == NULL) 
-				kernel->machine->WriteRegister(2, 0);
-			else
-				kernel->machine->WriteRegister(2, chr);
-			break;
-		}
-
-		case SC_PrintChar:
-		{
-			char chr = (char)kernel->machine->ReadRegister(4); 
-			kernel->synchConsoleOut->PutChar(chr);
-			break;
-
-		}
-
-		case SC_ReadString:
-		{
-
-			int virtAddr, length;
-			char* buffer = new char[255];
-			virtAddr = kernel->machine->ReadRegister(4);
-			length = kernel->machine->ReadRegister(5);
-			buffer = User2System(virtAddr, length);
-			size = 0;
-			char chr, *t = new char[length+1];
- 			for (size; size < length;++size)
-			{
-				chr = kernel->synchConsoleIn->GetChar();
-				t[size]=chr;
-				size++;
-				if (chr=='\n') 
-					break;
-			}
-			t[size]='\0';
-			buffer=t;
-			System2User(virtAddr, length, buffer);
-			kernel->machine->WriteRegister(2,size); 
-			delete[] buffer,t;  
-			//break;
-			PCIncrement();
-			return;
-		}
-
-		case SC_PrintString:
-		{
-			int virtAddr;
-			char* buffer;
-			virtAddr = kernel->machine->ReadRegister(4); 
-			buffer = User2System(virtAddr, 255); 
-			int i = 0;
-			while (buffer[i] != 0) 
-			{
-				kernel->synchConsoleOut->PutChar(buffer[i]); 
-				i++;
-			}
-			//buffer[i] = '\n';
-			kernel->synchConsoleOut->PutChar(buffer[i]);
-			delete buffer; 
-			//break;
-			PCIncrement();
-			return;
-		}
 
 			case SC_Create:
 			{
@@ -281,7 +215,7 @@ ExceptionHandler(ExceptionType which)
 			case SC_Close:
 			{
 				int id = kernel->machine->ReadRegister(4); 
-				if (id >= 0 && id <= 20) 
+				if (id >= 2 && id <= 20) 
 					if (kernel->fileSystem->openfile[id])
 					{
 						delete kernel->fileSystem->openfile[id]; 
@@ -307,49 +241,55 @@ ExceptionHandler(ExceptionType which)
 				char *buf;
 				if (id < 0 || id > 19)
 				{
+					printf("\n Read fail, ID out of range");
 					kernel->machine->WriteRegister(2, -1);
 					PCIncrement();
 					return;
 				}
 				if (kernel->fileSystem->openfile[id] == NULL)
 				{
+					printf("\n Read fail, null");
 					kernel->machine->WriteRegister(2, -1);
 					PCIncrement();
 					return;
 				}
-				if (kernel->fileSystem->openfile[id]->type == 3) 
+				if (kernel->fileSystem->openfile[id]->fileOpen->type == 3) 
 				{
+					printf("\n Read fail, stdout");
 					kernel->machine->WriteRegister(2, -1);
 					PCIncrement();
 					return;
 				}
-				OldPos = kernel->fileSystem->openfile[id]->GetCurrentPos(); 
+				OldPos = kernel->fileSystem->openfile[id]->fileOpen->GetCurrentPos(); 
 				buf = User2System(virtAddr, charcount); 
-				if (kernel->fileSystem->openfile[id]->type == 2)
+				if (kernel->fileSystem->openfile[id]->fileOpen->type == 2)
 				{
 					int size = 0;
 					char chr, *t = new char[charcount+1];
  					while (size < charcount)
 					{
 						chr = kernel->synchConsoleIn->GetChar();
-						t[size]=chr;
-						if (chr=='\n')
+						
+						if (chr=='\n'||chr=='\0'||chr==0||chr==EOF)
 							break;
+						t[size]=chr;
 						size++;
 					}
-					t[size+1]='\0';
+					t[size]='\0';
 					buf=t;
-					System2User(virtAddr, size, buf); 
+					System2User(virtAddr, size, buf);
+					printf("\n Read successfully");
 					kernel->machine->WriteRegister(2, size); 
 					delete[] buf, t, chr;
 					PCIncrement();
 					return;
 				}
 			
-				if ((kernel->fileSystem->openfile[id]->Read(buf, charcount)) > 0)
+				if ((kernel->fileSystem->openfile[id]->fileOpen->Read(buf, charcount)) > 0)
 				{
-					NewPos = kernel->fileSystem->openfile[id]->GetCurrentPos();
+					NewPos = kernel->fileSystem->openfile[id]->fileOpen->GetCurrentPos();
 					System2User(virtAddr, NewPos - OldPos, buf); 
+					printf("\n Read successfully");
 					kernel->machine->WriteRegister(2, NewPos - OldPos);
 				}
 				else
@@ -371,36 +311,40 @@ ExceptionHandler(ExceptionType which)
 				char *buf;
 				if (id < 0 || id > 19)
 				{
+					printf("\n Write fail, out of range");
 					kernel->machine->WriteRegister(2, -1);
 					PCIncrement();
 					return;
 				}
 				if (kernel->fileSystem->openfile[id] == NULL)
 				{
+					printf("\n Write fail,null");
 					kernel->machine->WriteRegister(2, -1);
 					PCIncrement();
 					return;
 				}
-				if (kernel->fileSystem->openfile[id]->type == 1 || kernel->fileSystem->openfile[id]->type == 2)
+				if (kernel->fileSystem->openfile[id]->fileOpen->type == 1 || kernel->fileSystem->openfile[id]->type == 2)
 				{
+					printf("\n Write fail, stdin or read only");
 					kernel->machine->WriteRegister(2, -1);
 					PCIncrement();
 					return;
 				}
 				OldPos = kernel->fileSystem->openfile[id]->GetCurrentPos();
 				buf = User2System(virtAddr, charcount);  
-				if (kernel->fileSystem->openfile[id]->type == 0)
+				if (kernel->fileSystem->openfile[id]->fileOpen->type == 0)
 				{
-					if ((kernel->fileSystem->openfile[id]->Write(buf, charcount)) > 0)
+					if ((kernel->fileSystem->openfile[id]->fileOpen->Write(buf, charcount)) > 0)
 					{
-						NewPos = kernel->fileSystem->openfile[id]->GetCurrentPos();
+						NewPos = kernel->fileSystem->openfile[id]->fileOpen->GetCurrentPos();
+					printf("\n Write successfully");
 						kernel->machine->WriteRegister(2, NewPos - OldPos);
 						delete buf;
 						PCIncrement();
 						return;
 					}
 				}
-				if (kernel->fileSystem->openfile[id]->type == 3) 
+				if (kernel->fileSystem->openfile[id]->fileOpen->type == 3) 
 				{
 					int i = 0;
 					while (buf[i] != 0 && buf[i] != '\n') 
@@ -411,6 +355,7 @@ ExceptionHandler(ExceptionType which)
 					buf[i] = '\n';
 					kernel->synchConsoleOut->PutChar(buf[i]);
 					kernel->machine->WriteRegister(2, i - 1); 
+					printf("\n Write successfully");
 					delete buf;
 					PCIncrement();
 					return;
@@ -439,12 +384,12 @@ ExceptionHandler(ExceptionType which)
 					PCIncrement();
 					return;
 				}
-				pos = (pos == -1) ? kernel->fileSystem->openfile[id]->Length() : pos;
-				if (pos > kernel->fileSystem->openfile[id]->Length() || pos < 0)
+				pos = (pos == -1) ? kernel->fileSystem->openfile[id]->fileOpen->Length() : pos;
+				if (pos > kernel->fileSystem->openfile[id]->fileOpen->Length() || pos < 0)
 					kernel->machine->WriteRegister(2, -1);
 				else
 				{
-					kernel->fileSystem->openfile[id]->Seek(pos);
+					kernel->fileSystem->openfile[id]->fileOpen->Seek(pos);
 					kernel->machine->WriteRegister(2, pos);
 				}
 				PCIncrement();

@@ -170,9 +170,9 @@ cat: cat.o start.o
 	$(COFF2NOFF) cat.coff cat
 
 copy.o: copy.c
-	$(CC) $(CFLAGS) -c copy.c
+	$(CC) $(CFLAGS) -c cat.c
 copy: copy.o start.o
-	$(LD) $(LDFLAGS) start.o copy.o -o copy.coff
+	$(LD) $(LDFLAGS) start.o cat.o -o copy.coff
 	$(COFF2NOFF) copy.coff copy
 
 delete.o: delete.c

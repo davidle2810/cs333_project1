@@ -3,6 +3,8 @@
 
 #include "thread.h"
 #include "synch.h"
+#include "utility.h"
+#include "addrspace.h"
 class PCB
 {
 	private:

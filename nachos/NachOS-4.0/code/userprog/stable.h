@@ -35,11 +35,11 @@ class Sem
 		{
 			return this->name;
 		}
-}
+};
 class STable
 {
 	private:
-		BitMap* bm; // Manage the free slot
+		Bitmap* bm; // Manage the free slot
 		Sem* semTab[MAX_SEMAPHORE];
 	public:
 	// Initial the Sem object, the started value is null

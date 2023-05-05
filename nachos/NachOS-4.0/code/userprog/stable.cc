@@ -1,9 +1,10 @@
 #include "stable.h"
+#include "bitmap.h"
 
 // Constructor
 STable::STable()
 {	
-	this->bm = new BitMap(MAX_SEMAPHORE);
+	this->bm = new Bitmap(MAX_SEMAPHORE);
 	
 	for(int i =0; i < MAX_SEMAPHORE; i++)
 	{

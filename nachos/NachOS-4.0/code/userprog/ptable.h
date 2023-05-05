@@ -3,14 +3,14 @@
 
 #include "bitmap.h"
 #include "pcb.h"
-#include "synch.h"
+#include "openfile.h"
 
 #define MAX_PROCESS 10
 class PTable
 {
 	private:
 		int psize;
-		BitMap *bm; // mark the locations that have been used in pcb
+		Bitmap *bm; // mark the locations that have been used in pcb
 		PCB* pcb[MAX_PROCESS];
 		Semaphore* bmsem; // used to prevent the case of loading 2 processes at the same time
 	public:

@@ -16,6 +16,7 @@
 #define BITMAP_H
 
 #include "copyright.h"
+#include "debug.h"
 #include "utility.h"
 
 // Definitions helpful for representing a bitmap as an array of integers

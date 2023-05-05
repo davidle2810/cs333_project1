@@ -34,16 +34,6 @@
 #define SC_ExecV	13
 #define SC_ThreadExit   14
 #define SC_ThreadJoin   15
-#define SC_ReadChar	16
-#define SC_PrintChar	17
-#define SC_ReadString	18
-#define SC_PrintString	19
-
-#define	SC_TCPSocket	21
-#define	SC_TCPConnect	22
-#define	SC_TCPSend	23
-#define	SC_TCPReceive	24
-#define	SC_TCPClose	25
 
 #define SC_CreateSemaphore	28
 #define SC_Wait		29
@@ -119,8 +109,8 @@ typedef int OpenFileId;
  * the console device.
  */
 
-//#define ConsoleInput	0  
-//#define ConsoleOutput	1  
+#define ConsoleInput	0  
+#define ConsoleOutput	1  
 
  
 /* Create a Nachos file, with name "name" */
@@ -160,19 +150,6 @@ int Seek(int position, OpenFileId id);
  */
 int Close(OpenFileId id);
 
-char ReadChar();
-
-void PrintChar(char character);
-
-void ReadString(char buffer[], int length);
-
-void PrintString(char buffer[]);
-int sockets[20];
-int TCPSocket();
-int Connect(int socketid, char *ip, int port);
-int Send(int socketid, char *buffer, int len);
-int Receive(int socketid, char *buffer, int len);
-int Close(int socketid);
 /* User-level thread operations: Fork and Yield.  To allow multiple
  * threads to run within a user program. 
  *

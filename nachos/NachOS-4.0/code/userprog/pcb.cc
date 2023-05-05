@@ -1,9 +1,8 @@
 #include "pcb.h"
 #include "utility.h"
-#include "system.h"
 #include "thread.h"
 #include "addrspace.h"
-
+#include "main.h"
 
 extern void StartProcess_2(int id);
 

@@ -1,6 +1,5 @@
 #include "ptable.h"
-#include "system.h"
-#include "openfile.h"
+#include "synch.h"
 
 PTable::PTable(int size)
 {
